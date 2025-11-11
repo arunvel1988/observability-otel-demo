@@ -27,6 +27,8 @@ spec:
               name: http
             - containerPort: 4317
               name: otlp-grpc
+            - containerPort: 4318
+              name: otlp-http
           volumeMounts:
             - name: alloy-config
               mountPath: /etc/alloy
@@ -35,7 +37,29 @@ spec:
           configMap:
             name: alloy-config
 ---
-
+apiVersion: v1
+kind: Service
+metadata:
+  name: alloy
+  namespace: logging
+spec:
+  selector:
+    app: alloy
+  ports:
+    - name: http
+      port: 12345
+      targetPort: 12345
+      protocol: TCP
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
+  type: ClusterIP
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -47,7 +71,13 @@ data:
     // OTLP Receiver for Python OTEL logs
     // -------------------------
     otelcol.receiver.otlp "default" {
-      grpc {}  // listens on 0.0.0.0:4317
+      grpc {
+        endpoint = "0.0.0.0:4317"
+      }
+      
+      http {
+        endpoint = "0.0.0.0:4318"
+      }
 
       output {
         logs = [otelcol.processor.batch.default.input]
@@ -67,7 +97,14 @@ data:
     // Loki Exporter
     // -------------------------
     otelcol.exporter.loki "default" {
-      client {
-        endpoint = "http://loki:3100/loki/api/v1/push"
+      forward_to = [loki.write.default.receiver]
+    }
+
+    // -------------------------
+    // Loki Write Component
+    // -------------------------
+    loki.write "default" {
+      endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
       }
     }
