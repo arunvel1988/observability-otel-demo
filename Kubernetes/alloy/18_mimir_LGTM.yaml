@@ -88,8 +88,6 @@ data:
       data_dir: /tmp/mimir/compactor
       compaction_interval: 30m
       deletion_delay: 2h
-      max_closing_blocks_to_keep: 2
-      max_opening_blocks_to_keep: 2
       symbols_flushers_concurrency: 4
       first_level_compaction_wait_period: 25m
     
