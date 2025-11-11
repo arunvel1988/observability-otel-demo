@@ -35,6 +35,7 @@ spec:
           configMap:
             name: alloy-config
 ---
+
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -43,19 +44,10 @@ metadata:
 data:
   config.alloy: |
     // -------------------------
-    // Write target: Loki
-    // -------------------------
-    loki.write "send_to_loki" {
-      endpoint {
-        url = "http://loki:3100/loki/api/v1/push"
-      }
-    }
-
-    // -------------------------
     // OTLP Receiver for Python OTEL logs
     // -------------------------
     otelcol.receiver.otlp "default" {
-      grpc {}  // listen on 0.0.0.0:4317 by default
+      grpc {}  // listens on 0.0.0.0:4317
 
       output {
         logs = [otelcol.processor.batch.default.input]
@@ -67,7 +59,15 @@ data:
     // -------------------------
     otelcol.processor.batch "default" {
       output {
-        logs = [loki.write.send_to_loki.receiver]
+        logs = [otelcol.exporter.loki.default.input]
       }
     }
 
+    // -------------------------
+    // Loki Exporter
+    // -------------------------
+    otelcol.exporter.loki "default" {
+      client {
+        endpoint = "http://loki:3100/loki/api/v1/push"
+      }
+    }
