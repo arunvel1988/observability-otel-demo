@@ -17,6 +17,14 @@ spec:
         - name: logs-file-otel
           image: python:3.11-slim
           command: ["sh", "-c", "pip install -r /requirements.txt && python3 /main.py"]
+          env:
+            # Alloy is in the same namespace (logging)
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://alloy:4317"
+            - name: OTEL_SERVICE_NAME
+              value: "otel-logging-demo"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.namespace=logging,environment=kind-lab"
           volumeMounts:
             - name: script
               mountPath: /main.py
@@ -42,45 +50,119 @@ data:
     import time
     import random
     import logging
-
+    import os
     from opentelemetry._logs import set_logger_provider
     from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
     from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
     from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
     from opentelemetry.sdk.resources import Resource
 
-    def setup_otel_logging(otel_collector_host: str, otel_collector_port: int, insecure: bool = True):
-        # LoggerProvider with service info
-        logger_provider = LoggerProvider(
-            resource=Resource.create({
-                "service.name": "otel-example",
-                "service.instance.id": "otel-example-instance",
-            })
-        )
+    def setup_otel_logging():
+        # Get configuration from environment or use defaults
+        otel_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://alloy:4317")
+        service_name = os.getenv("OTEL_SERVICE_NAME", "otel-logging-demo")
+        
+        print(f"🚀 Initializing OTEL Logger")
+        print(f"📡 Endpoint: {otel_endpoint}")
+        print(f"🏷️  Service: {service_name}")
+        
+        # Create resource with service information
+        resource = Resource.create({
+            "service.name": service_name,
+            "service.instance.id": f"{service_name}-{random.randint(1000,9999)}",
+            "deployment.environment": os.getenv("ENVIRONMENT", "kind-lab"),
+        })
+        
+        # Initialize LoggerProvider
+        logger_provider = LoggerProvider(resource=resource)
         set_logger_provider(logger_provider)
-
-        # OTLP exporter pointing to Alloy/Collector
-        exporter = OTLPLogExporter(
-            endpoint=f"{otel_collector_host}:{otel_collector_port}",
-            insecure=insecure
-        )
-
-        # Batch processor for efficient log sending
-        logger_provider.add_log_record_processor(BatchLogRecordProcessor(exporter))
-
-        # Attach OTEL LoggingHandler to Python root logger
-        handler = LoggingHandler(level=logging.NOTSET, logger_provider=logger_provider)
-        logging.getLogger().addHandler(handler)
-
-        return logging.getLogger("otel-python-logger")
+        
+        # Configure OTLP exporter
+        try:
+            exporter = OTLPLogExporter(
+                endpoint=otel_endpoint,
+                insecure=True  # For local development
+            )
+            
+            # Add batch processor
+            logger_provider.add_log_record_processor(
+                BatchLogRecordProcessor(exporter)
+            )
+            
+            # Attach handler to root logger
+            handler = LoggingHandler(
+                level=logging.NOTSET,
+                logger_provider=logger_provider
+            )
+            
+            # Configure root logger
+            logging.basicConfig(level=logging.INFO)
+            logging.getLogger().addHandler(handler)
+            
+            print("✅ OTEL logging initialized successfully")
+            return logging.getLogger(__name__)
+            
+        except Exception as e:
+            print(f"❌ Failed to initialize OTEL logging: {e}")
+            # Fallback to standard logging
+            logging.basicConfig(level=logging.INFO)
+            return logging.getLogger(__name__)
 
     # Initialize logger
-    logger = setup_otel_logging(otel_collector_host="alloy", otel_collector_port=4317)
+    logger = setup_otel_logging()
 
-    # Generate logs
+    # Log levels to cycle through
+    log_levels = [
+        (logging.DEBUG, "DEBUG"),
+        (logging.INFO, "INFO"),
+        (logging.WARNING, "WARNING"),
+        (logging.ERROR, "ERROR"),
+    ]
+
+    # Simulate different log scenarios
+    log_messages = [
+        "User login successful",
+        "Database query executed",
+        "Cache hit for key: user_123",
+        "API request received",
+        "Processing payment transaction",
+        "File uploaded successfully",
+        "Background job completed",
+        "Metrics exported to monitoring system",
+    ]
+
+    counter = 0
+    print("🔄 Starting log generation...")
+    
+    # Generate logs continuously
     while True:
-        logger.info(f"Simulated OTEL log: {random.randint(1000,9999)}")
-        time.sleep(2)
+        try:
+            # Pick random log level and message
+            level, level_name = random.choice(log_levels)
+            message = random.choice(log_messages)
+            random_id = random.randint(1000, 9999)
+            
+            # Log with different levels
+            logger.log(
+                level,
+                f"[{level_name}] {message} | ID: {random_id} | Counter: {counter}"
+            )
+            
+            counter += 1
+            
+            # Print to stdout for visibility
+            if counter % 10 == 0:
+                print(f"📊 Generated {counter} logs...")
+            
+            # Sleep between logs
+            time.sleep(2)
+            
+        except KeyboardInterrupt:
+            print("\n🛑 Stopping log generation...")
+            break
+        except Exception as e:
+            print(f"⚠️  Error generating log: {e}")
+            time.sleep(5)
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -91,3 +173,4 @@ data:
   requirements.txt: |
     opentelemetry-sdk==1.18.0
     opentelemetry-exporter-otlp==1.18.0
+    opentelemetry-api==1.18.0
