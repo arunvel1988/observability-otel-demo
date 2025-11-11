@@ -42,16 +42,32 @@ metadata:
   namespace: logging
 data:
   config.alloy: |
-    // Write target to Loki
+    // -------------------------
+    // Write target: Loki
+    // -------------------------
     loki.write "send_to_loki" {
       endpoint {
         url = "http://loki:3100/loki/api/v1/push"
       }
     }
 
-    // OTLP gRPC source for Python OTEL logs
-    otelcol.receiver.otlp "otel_logs" {
-      listen = "0.0.0.0:4317"
-      protocol = "grpc"
-      forward_to = [loki.write.send_to_loki.receiver]
+    // -------------------------
+    // OTLP Receiver for Python OTEL logs
+    // -------------------------
+    otelcol.receiver.otlp "default" {
+      grpc {}  // listen on 0.0.0.0:4317 by default
+
+      output {
+        logs = [otelcol.processor.batch.default.input]
+      }
     }
+
+    // -------------------------
+    // Batch Processor
+    // -------------------------
+    otelcol.processor.batch "default" {
+      output {
+        logs = [loki.write.send_to_loki.receiver]
+      }
+    }
+
