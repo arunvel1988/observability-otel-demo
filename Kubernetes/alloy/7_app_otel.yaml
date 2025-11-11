@@ -49,11 +49,8 @@ data:
     from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
     from opentelemetry.sdk.resources import Resource
 
-    # ------------------------------
-    # OTEL Logging setup
-    # ------------------------------
     def setup_otel_logging(otel_collector_host: str, otel_collector_port: int, insecure: bool = True):
-        # Create LoggerProvider with service info
+        # LoggerProvider with service info
         logger_provider = LoggerProvider(
             resource=Resource.create({
                 "service.name": "otel-example",
@@ -62,13 +59,13 @@ data:
         )
         set_logger_provider(logger_provider)
 
-        # OTLP exporter to Alloy/OTEL collector
+        # OTLP exporter pointing to Alloy/Collector
         exporter = OTLPLogExporter(
             endpoint=f"{otel_collector_host}:{otel_collector_port}",
             insecure=insecure
         )
 
-        # Add batch processor for efficient log handling
+        # Batch processor for efficient log sending
         logger_provider.add_log_record_processor(BatchLogRecordProcessor(exporter))
 
         # Attach OTEL LoggingHandler to Python root logger
@@ -77,17 +74,13 @@ data:
 
         return logging.getLogger("otel-python-logger")
 
-    # ------------------------------
-    # Generate logs in a loop
-    # ------------------------------
+    # Initialize logger
     logger = setup_otel_logging(otel_collector_host="alloy", otel_collector_port=4317)
 
+    # Generate logs
     while True:
         logger.info(f"Simulated OTEL log: {random.randint(1000,9999)}")
         time.sleep(2)
-
-
-
 ---
 apiVersion: v1
 kind: ConfigMap
