@@ -25,16 +25,17 @@ spec:
           volumeMounts:
             - name: alloy-config
               mountPath: /etc/alloy
-            # Mount shared log directory (optional)
-            - name: logs
+            - name: shared-logs
               mountPath: /temp/logs
       volumes:
         - name: alloy-config
           configMap:
             name: alloy-config
-        # Shared emptyDir for logs (use this if you have a log generator pod)
-        - name: logs
-          emptyDir: {}
+        - name: shared-logs
+          hostPath:
+            path: /tmp/logs-demo   # same hostPath as logs-file pod
+            type: Directory
+
 ---
 
 apiVersion: v1

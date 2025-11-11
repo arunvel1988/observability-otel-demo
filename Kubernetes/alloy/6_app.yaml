@@ -16,25 +16,20 @@ spec:
       containers:
         - name: logs-file
           image: python:3.11-slim
-          command: ["python3", "/main.py"]
+          command:
+            - "sh"
+            - "-c"
+            - |
+              mkdir -p /logs
+              while true; do
+                echo "$(date) INFO Simulated log: $RANDOM" >> /logs/app.log
+                sleep 2
+              done
           volumeMounts:
-            - name: script
-              mountPath: /main.py
-              subPath: main.py
+            - name: shared-logs
+              mountPath: /logs
       volumes:
-        - name: script
-          configMap:
-            name: logs-file-script
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: logs-file-script
-  namespace: logging
-data:
-  main.py: |
-    import time, random, logging
-    logging.basicConfig(filename="/var/log/sample.log", level=logging.INFO)
-    while True:
-        logging.info(f"Simulated log: {random.randint(1000,9999)}")
-        time.sleep(2)
+        - name: shared-logs
+          hostPath:
+            path: /tmp/logs-demo
+            type: DirectoryOrCreate
