@@ -36,6 +36,7 @@ spec:
         - name: logs
           emptyDir: {}
 ---
+
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -43,25 +44,25 @@ metadata:
   namespace: logging
 data:
   config.alloy: |
-    // Alloy configuration for collecting logs from files and sending them to Loki
+    // Alloy config for collecting logs and sending to Loki
 
-    // Define the Loki output
+    // Write target to Loki
     loki.write "send_to_loki" {
       endpoint {
         url = "http://loki:3100/loki/api/v1/push"
       }
     }
 
-    // Match local log files inside /temp/logs
+    // File discovery — read local log files
     local.file_match "log_files" {
       path_targets = [
         {
-          __path__ = "/temp/logs/*.log"
+          __path__ = "/temp/logs/*.log",
         },
       ]
     }
 
-    // Read logs from the matched files and forward to Loki
+    // Send discovered logs to Loki
     loki.source.file "logs_to_loki" {
       targets    = local.file_match.log_files.targets
       forward_to = [loki.write.send_to_loki.receiver]
