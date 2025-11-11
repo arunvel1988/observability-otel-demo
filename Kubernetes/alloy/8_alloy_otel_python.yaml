@@ -51,8 +51,8 @@ data:
 
     // OTLP gRPC source for Python OTEL logs
     otelcol.receiver.otlp "otel_logs" {
-    endpoint = "0.0.0.0:4317"
-    protocol = "grpc"
-    forward_to = [loki.write.send_to_loki.receiver]
+      endpoint = "0.0.0.0:4317"
+      protocol = "grpc"
+      forward_to = [loki.write.send_to_loki.receiver]
 }
 
