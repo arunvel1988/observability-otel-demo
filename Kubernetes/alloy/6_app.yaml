@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logs-file
+  namespace: logging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logs-file
+  template:
+    metadata:
+      labels:
+        app: logs-file
+    spec:
+      containers:
+        - name: logs-file
+          image: python:3.11-slim
+          command: ["python3", "/main.py"]
+          volumeMounts:
+            - name: script
+              mountPath: /main.py
+              subPath: main.py
+      volumes:
+        - name: script
+          configMap:
+            name: logs-file-script
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logs-file-script
+  namespace: logging
+data:
+  main.py: |
+    import time, random, logging
+    logging.basicConfig(filename="/var/log/sample.log", level=logging.INFO)
+    while True:
+        logging.info(f"Simulated log: {random.randint(1000,9999)}")
+        time.sleep(2)

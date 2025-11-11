@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alloy
+  namespace: logging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alloy
+  template:
+    metadata:
+      labels:
+        app: alloy
+    spec:
+      containers:
+        - name: alloy
+          image: grafana/alloy:v1.10.0
+          args:
+            - "run"
+            - "--server.http.listen-addr=0.0.0.0:12345"
+            - "--stability.level=experimental"
+            - "--storage.path=/var/lib/alloy/data"
+            - "/etc/alloy/config.alloy"
+          volumeMounts:
+            - name: alloy-config
+              mountPath: /etc/alloy
+            # Mount shared log directory (optional)
+            - name: logs
+              mountPath: /temp/logs
+      volumes:
+        - name: alloy-config
+          configMap:
+            name: alloy-config
+        # Shared emptyDir for logs (use this if you have a log generator pod)
+        - name: logs
+          emptyDir: {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-config
+  namespace: logging
+data:
+  config.alloy: |
+    // Alloy configuration for collecting logs from files and sending them to Loki
+
+    // Define the Loki output
+    loki.write "send_to_loki" {
+      endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+      }
+    }
+
+    // Match local log files inside /temp/logs
+    local.file_match "log_files" {
+      path_targets = [
+        {
+          __path__ = "/temp/logs/*.log"
+        },
+      ]
+    }
+
+    // Read logs from the matched files and forward to Loki
+    loki.source.file "logs_to_loki" {
+      targets    = local.file_match.log_files.targets
+      forward_to = [loki.write.send_to_loki.receiver]
+    }
