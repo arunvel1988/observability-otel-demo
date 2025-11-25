@@ -132,7 +132,7 @@ data:
     ]
 
     counter = 0
-    print("🔄 Starting log generation...")
+    print("Starting log generation...")
     
     # Generate logs continuously
     while True:
@@ -152,7 +152,7 @@ data:
             
             # Print to stdout for visibility
             if counter % 10 == 0:
-                print(f"📊 Generated {counter} logs...")
+                print(f"Generated {counter} logs...")
             
             # Sleep between logs
             time.sleep(2)
