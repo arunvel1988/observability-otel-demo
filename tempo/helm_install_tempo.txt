@@ -52,3 +52,9 @@ traces:
 helm -n tempo-test install tempo grafana/tempo-distributed -f values.yaml
 
 ##################################################
+
+#### give this endpoint in alloy ####
+
+http://tempo-distributor.tempo-test.svc.cluster.local:4317
+
+####################
