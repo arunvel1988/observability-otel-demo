@@ -58,3 +58,10 @@ helm -n tempo-test install tempo grafana/tempo-distributed -f values.yaml
 http://tempo-distributor.tempo-test.svc.cluster.local:4317
 
 ####################
+
+#### give this in 15_grafana.yaml #######
+
+
+http://tempo-query-frontend.tempo-test.svc.cluster.local:3100
+
+###################################################################
